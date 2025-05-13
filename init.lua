@@ -219,6 +219,69 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+local function toggle_term(direction)
+  -- search for an existing terminal window
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.api.nvim_buf_get_option(buf, 'buftype') == 'terminal' then
+      return vim.api.nvim_win_close(win, true)
+    end
+  end
+  -- otherwise open a new one
+  if direction == 'horizontal' then
+    vim.cmd 'belowright split | terminal'
+  else
+    vim.cmd 'rightbelow vsplit | terminal'
+  end
+end
+
+-- Floating Terminal (no extra plugin)
+local function toggle_float_term()
+  -- reuse existing float if it exists
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    if vim.api.nvim_buf_get_option(buf, 'buftype') == 'terminal' then
+      return vim.api.nvim_win_close(win, true)
+    end
+  end
+
+  -- create new terminal buffer
+  local buf = vim.api.nvim_create_buf(false, true)
+  local width = math.floor(vim.o.columns * 0.8)
+  local height = math.floor(vim.o.lines * 0.8)
+  local row = math.floor((vim.o.lines - height) / 2 - 1)
+  local col = math.floor((vim.o.columns - width) / 2)
+
+  vim.api.nvim_open_win(buf, true, {
+    relative = 'editor',
+    width = width,
+    height = height,
+    row = row,
+    col = col,
+    style = 'minimal',
+    border = 'rounded',
+  })
+
+  -- start the shell
+  vim.fn.termopen(vim.o.shell)
+  vim.cmd 'startinsert'
+end
+
+vim.keymap.set('n', '<leader>tf', toggle_float_term, {
+  desc = 'Toggle floating terminal',
+})
+
+vim.keymap.set('n', '<leader>tt', function()
+  toggle_term 'horizontal'
+end, {
+  desc = 'Toggle terminal bottom',
+})
+vim.keymap.set('n', '<leader>tv', function()
+  toggle_term 'vertical'
+end, {
+  desc = 'Toggle terminal right',
+})
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -248,6 +311,7 @@ rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  'github/copilot.vim',
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
